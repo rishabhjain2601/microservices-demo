@@ -49,7 +49,7 @@ spec:
               - ALL
           privileged: false
           readOnlyRootFilesystem: true
-        image: ghcr.io/rishabhjain2601/microservices-demo/emailservice:latest
+        image: us-central1-docker.pkg.dev/google-samples/microservices-demo/emailservice:v0.10.1
         ports:
         - containerPort: 8080
         env:
@@ -206,7 +206,7 @@ spec:
               - ALL
           privileged: false
           readOnlyRootFilesystem: true
-        image: ghcr.io/rishabhjain2601/microservices-demo/recommendationservice:latest
+        image: us-central1-docker.pkg.dev/google-samples/microservices-demo/recommendationservice:v0.10.1
         ports:
         - containerPort: 8080
         readinessProbe:
@@ -322,6 +322,8 @@ spec:
             value: "adservice:9555"
           - name: SHOPPING_ASSISTANT_SERVICE_ADDR
             value: "shoppingassistantservice:80"
+          - name: DATABASE_URL
+            value: "postgres://postgres:password@postgres:5432/orders?sslmode=disable"
           # # ENV_PLATFORM: One of: local, gcp, aws, azure, onprem, alibaba
           # # When not set, defaults to "local" unless running in GKE, otherwies auto-sets to gcp
           # - name: ENV_PLATFORM
@@ -557,7 +559,7 @@ spec:
               - ALL
           privileged: false
           readOnlyRootFilesystem: true
-        image: ghcr.io/rishabhjain2601/microservices-demo/cartservice:latest
+        image: us-central1-docker.pkg.dev/google-samples/microservices-demo/cartservice:v0.10.1
         ports:
         - containerPort: 7070
         env:
@@ -735,7 +737,7 @@ spec:
               - ALL
           privileged: false
           readOnlyRootFilesystem: true
-        image: ghcr.io/rishabhjain2601/microservices-demo/loadgenerator:latest
+        image: us-central1-docker.pkg.dev/google-samples/microservices-demo/loadgenerator:v0.10.1
         env:
         - name: FRONTEND_ADDR
           value: "frontend:80"
@@ -977,4 +979,62 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: adservice
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:13
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: orders
+        - name: POSTGRES_USER
+          value: postgres
+        - name: POSTGRES_PASSWORD
+          value: password
+        - name: PGDATA
+          value: "/var/lib/postgresql/data/pgdata"
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+      volumes:
+      - name: postgres-storage
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: 5432
 # [END gke_release_kubernetes_manifests_microservices_demo]
