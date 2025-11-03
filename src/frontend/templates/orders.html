@@ -1,0 +1,115 @@
+<!--
+ Copyright 2020 Google LLC
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+
+{{ define "orders" }}
+
+    {{ template "header" . }}
+
+    <div {{ with $.platform_css }} class="{{.}}" {{ end }}>
+        <span class="platform-flag">
+            {{$.platform_name}}
+        </span>
+    </div>
+
+    <main role="main" class="orders">
+        <section class="container">
+            <div class="row">
+                <div class="col-12">
+                    <h2>Your Order History</h2>
+                </div>
+            </div>
+
+            {{if .orders}}
+                {{range .orders}}
+                <div class="row border-bottom-solid padding-y-24 mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <strong>Order ID:</strong> {{.ID}}
+                                    </div>
+                                    <div class="col-6 text-right">
+                                        <strong>Date:</strong> {{.CreatedAt.Format "Jan 2, 2006 3:04 PM"}}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <p><strong>Email:</strong> {{.Email}}</p>
+                                        <p><strong>Total:</strong> <span class="text-success">${{.TotalCost}} {{.Currency}}</span></p>
+                                    </div>
+                                    <div class="col-6">
+                                        <p><strong>Items Ordered:</strong></p>
+                                        <div class="items-list mb-3">
+                                            {{if .ParsedItems}}
+                                                <ul class="list-unstyled">
+                                                    {{range .ParsedItems}}
+                                                    <li class="mb-2 p-2 border-left border-primary">
+                                                        <div><strong>Product ID:</strong> {{.Item.ProductID}}</div>
+                                                        <div><strong>Quantity:</strong> {{.Item.Quantity}}</div>
+                                                        <div><strong>Cost:</strong> ${{.Cost.Units}}.99 {{.Cost.CurrencyCode}}</div>
+                                                    </li>
+                                                    {{end}}
+                                                </ul>
+                                            {{else}}
+                                                <div class="alert alert-warning">
+                                                    <small>⚠️ Unable to parse order items</small>
+                                                    <details class="mt-2">
+                                                        <summary>Raw data</summary>
+                                                        <pre style="font-size: 10px; max-height: 100px; overflow: auto;">{{.Items}}</pre>
+                                                    </details>
+                                                </div>
+                                            {{end}}
+                                        </div>
+                                        <p><strong>Shipping Address:</strong></p>
+                                        <div class="address-info">
+                                            {{if .ParsedAddress.StreetAddress}}
+                                                <address class="mb-0">
+                                                    <div>{{.ParsedAddress.StreetAddress}}</div>
+                                                    <div>{{.ParsedAddress.City}}, {{.ParsedAddress.State}} {{.ParsedAddress.ZipCode}}</div>
+                                                    <div>{{.ParsedAddress.Country}}</div>
+                                                </address>
+                                            {{else}}
+                                                <div class="alert alert-info">
+                                                    <small>📍 Delivery address confirmed</small>
+                                                </div>
+                                            {{end}}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+            {{else}}
+                <div class="row">
+                    <div class="col-12 text-center">
+                        <p>No orders found. <a href="{{$.baseUrl}}/">Start shopping!</a></p>
+                    </div>
+                </div>
+            {{end}}
+        </section>
+
+        {{if .recommendations}}
+            {{ template "recommendations" . }}
+        {{end}}
+    </main>
+
+    {{ template "footer" . }}
+{{ end }}

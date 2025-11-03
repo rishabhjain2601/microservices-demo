@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -29,6 +30,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
@@ -632,4 +634,128 @@ func stringinSlice(slice []string, val string) bool {
 		}
 	}
 	return false
+}
+
+// OrderRecord represents an order from the database
+type OrderRecord struct {
+	ID              string    `json:"id"`
+	UserID          string    `json:"user_id"`
+	Email           string    `json:"email"`
+	TotalCost       string    `json:"total_cost"`
+	Currency        string    `json:"currency"`
+	Items           string    `json:"items"`
+	ShippingAddress string    `json:"shipping_address"`
+	CreatedAt       time.Time `json:"created_at"`
+	// Parsed fields for display
+	ParsedItems   []OrderItem `json:"-"`
+	ParsedAddress Address     `json:"-"`
+}
+
+// OrderItem represents a parsed order item (matches the actual database structure)
+type OrderItem struct {
+	Item OrderItemDetails `json:"item"`
+	Cost Money           `json:"cost"`
+}
+
+type OrderItemDetails struct {
+	ProductID string `json:"product_id"`
+	Quantity  int32  `json:"quantity"`
+}
+
+type Money struct {
+	CurrencyCode string `json:"currency_code"`
+	Units        int64  `json:"units"`
+	Nanos        int32  `json:"nanos"`
+}
+
+// Address represents a parsed shipping address
+type Address struct {
+	StreetAddress string `json:"street_address"`
+	City          string `json:"city"`
+	State         string `json:"state"`
+	Country       string `json:"country"`
+	ZipCode       int32  `json:"zip_code"`
+}
+
+func (fe *frontendServer) orderHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	log := r.Context().Value(ctxKeyLog{}).(logrus.FieldLogger)
+	log.Debug("showing order history")
+
+	// Get database URL from environment
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		dbURL = "postgres://postgres:password@localhost:5432/orders?sslmode=disable"
+	}
+
+	// Connect to database
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "could not connect to database"), http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	// Get orders for current user
+	userID := sessionID(r)
+	query := `SELECT id, user_id, email, total_cost, currency, items, shipping_address, created_at 
+			  FROM orders WHERE user_id = $1 ORDER BY created_at DESC`
+	
+	rows, err := db.Query(query, userID)
+	if err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "could not query orders"), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var orders []OrderRecord
+	for rows.Next() {
+		var order OrderRecord
+		err := rows.Scan(
+			&order.ID,
+			&order.UserID,
+			&order.Email,
+			&order.TotalCost,
+			&order.Currency,
+			&order.Items,
+			&order.ShippingAddress,
+			&order.CreatedAt,
+		)
+		if err != nil {
+			log.WithField("error", err).Warn("failed to scan order")
+			continue
+		}
+
+		// Parse JSON items
+		if order.Items != "" {
+			var items []OrderItem
+			if err := json.Unmarshal([]byte(order.Items), &items); err == nil {
+				order.ParsedItems = items
+			}
+		}
+
+		// Parse JSON address
+		if order.ShippingAddress != "" {
+			var address Address
+			if err := json.Unmarshal([]byte(order.ShippingAddress), &address); err == nil {
+				order.ParsedAddress = address
+			}
+		}
+
+		orders = append(orders, order)
+	}
+
+	currencies, err := fe.getCurrencies(r.Context())
+	if err != nil {
+		renderHTTPError(log, r, w, errors.Wrap(err, "could not retrieve currencies"), http.StatusInternalServerError)
+		return
+	}
+
+	if err := templates.ExecuteTemplate(w, "orders", injectCommonTemplateData(r, map[string]interface{}{
+		"show_currency": true,
+		"currencies":    currencies,
+		"orders":        orders,
+		"cart_size":     0, // Not needed for order history page
+	})); err != nil {
+		log.Println(err)
+	}
 }

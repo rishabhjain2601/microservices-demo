@@ -81,6 +81,8 @@ type checkoutService struct {
 
 	paymentSvcAddr string
 	paymentSvcConn *grpc.ClientConn
+
+	dbService *DatabaseService
 }
 
 func main() {
@@ -112,6 +114,21 @@ func main() {
 	mustMapEnv(&svc.currencySvcAddr, "CURRENCY_SERVICE_ADDR")
 	mustMapEnv(&svc.emailSvcAddr, "EMAIL_SERVICE_ADDR")
 	mustMapEnv(&svc.paymentSvcAddr, "PAYMENT_SERVICE_ADDR")
+
+	// Initialize database service if DATABASE_URL is provided
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL != "" {
+		log.Info("Initializing database connection...")
+		dbService, err := NewDatabaseService(dbURL)
+		if err != nil {
+			log.Warnf("Failed to initialize database: %v. Orders will not be persisted.", err)
+		} else {
+			svc.dbService = dbService
+			log.Info("Database connection established successfully")
+		}
+	} else {
+		log.Info("DATABASE_URL not set. Orders will not be persisted to database.")
+	}
 
 	mustConnGRPC(ctx, &svc.shippingSvcConn, svc.shippingSvcAddr)
 	mustConnGRPC(ctx, &svc.productCatalogSvcConn, svc.productCatalogSvcAddr)
@@ -274,6 +291,21 @@ func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderReq
 	} else {
 		log.Infof("order confirmation email sent to %q", req.Email)
 	}
+
+	// Save order to database if database service is available
+	if cs.dbService != nil {
+		orderRecord, err := prepareOrderForDB(req, orderID.String(), &total, prep.orderItems)
+		if err != nil {
+			log.Warnf("failed to prepare order for database: %+v", err)
+		} else {
+			if err := cs.dbService.SaveOrder(orderRecord); err != nil {
+				log.Warnf("failed to save order to database: %+v", err)
+			} else {
+				log.Infof("order %s saved to database successfully", orderID.String())
+			}
+		}
+	}
+
 	resp := &pb.PlaceOrderResponse{Order: orderResult}
 	return resp, nil
 }
