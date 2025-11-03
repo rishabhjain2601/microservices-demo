@@ -57,6 +57,10 @@ spec:
           value: "8080"
         - name: DISABLE_PROFILER
           value: "1"
+        - name: ENABLE_TRACING
+          value: "1"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://grafana-k8s-monitoring-alloy-receiver.default.svc.cluster.local:4318"
         readinessProbe:
           periodSeconds: 5
           grpc:
@@ -149,6 +153,10 @@ spec:
             value: "cartservice:7070"
           - name: DATABASE_URL
             value: "postgres://postgres:password@postgres:5432/orders?sslmode=disable"
+          - name: ENABLE_TRACING
+            value: "1"
+          - name: COLLECTOR_SERVICE_ADDR
+            value: "grafana-k8s-monitoring-alloy-receiver.default.svc.cluster.local:4317"
           resources:
             requests:
               cpu: 100m
@@ -226,6 +234,10 @@ spec:
           value: "productcatalogservice:3550"
         - name: DISABLE_PROFILER
           value: "1"
+        - name: ENABLE_TRACING
+          value: "1"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://grafana-k8s-monitoring-alloy-receiver.default.svc.cluster.local:4318"
         resources:
           requests:
             cpu: 100m
@@ -332,6 +344,10 @@ spec:
           #   value: "aws"
           - name: ENABLE_PROFILER
             value: "0"
+          - name: ENABLE_TRACING
+            value: "1"
+          - name: COLLECTOR_SERVICE_ADDR
+            value: "grafana-k8s-monitoring-alloy-receiver.default.svc.cluster.local:4317"
           # - name: CYMBAL_BRANDING
           #   value: "true"
           # - name: ENABLE_ASSISTANT
@@ -423,6 +439,10 @@ spec:
           value: "50051"
         - name: DISABLE_PROFILER
           value: "1"
+        - name: ENABLE_TRACING
+          value: "1"
+        - name: COLLECTOR_SERVICE_ADDR
+          value: "grafana-k8s-monitoring-alloy-receiver.default.svc.cluster.local:4317"
         readinessProbe:
           grpc:
             port: 50051
@@ -496,6 +516,10 @@ spec:
           value: "3550"
         - name: DISABLE_PROFILER
           value: "1"
+        - name: ENABLE_TRACING
+          value: "1"
+        - name: COLLECTOR_SERVICE_ADDR
+          value: "grafana-k8s-monitoring-alloy-receiver.default.svc.cluster.local:4317"
         readinessProbe:
           grpc:
             port: 3550
@@ -567,6 +591,10 @@ spec:
         env:
         - name: REDIS_ADDR
           value: "redis-cart:6379"
+        - name: ENABLE_TRACING
+          value: "1"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://grafana-k8s-monitoring-alloy-receiver.default.svc.cluster.local:4318"
         resources:
           requests:
             cpu: 200m
@@ -800,6 +828,10 @@ spec:
           value: "7000"
         - name: DISABLE_PROFILER
           value: "1"
+        - name: ENABLE_TRACING
+          value: "1"
+        - name: COLLECTOR_SERVICE_ADDR
+          value: "grafana-k8s-monitoring-alloy-receiver.default.svc.cluster.local:4317"
         readinessProbe:
           grpc:
             port: 7000
@@ -872,6 +904,10 @@ spec:
           value: "50051"
         - name: DISABLE_PROFILER
           value: "1"
+        - name: ENABLE_TRACING
+          value: "1"
+        - name: COLLECTOR_SERVICE_ADDR
+          value: "grafana-k8s-monitoring-alloy-receiver.default.svc.cluster.local:4317"
         readinessProbe:
           periodSeconds: 5
           grpc:
@@ -944,6 +980,10 @@ spec:
         env:
         - name: PORT
           value: "9555"
+        - name: ENABLE_TRACING
+          value: "1"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://grafana-k8s-monitoring-alloy-receiver.default.svc.cluster.local:4318"
         resources:
           requests:
             cpu: 200m
