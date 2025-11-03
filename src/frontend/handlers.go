@@ -234,7 +234,7 @@ func (fe *frontendServer) addToCartHandler(w http.ResponseWriter, r *http.Reques
 		renderHTTPError(log, r, w, errors.Wrap(err, "failed to add to cart"), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("location", baseUrl + "/cart")
+	w.Header().Set("location", baseUrl+"/cart")
 	w.WriteHeader(http.StatusFound)
 }
 
@@ -246,7 +246,7 @@ func (fe *frontendServer) emptyCartHandler(w http.ResponseWriter, r *http.Reques
 		renderHTTPError(log, r, w, errors.Wrap(err, "failed to empty cart"), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("location", baseUrl + "/")
+	w.Header().Set("location", baseUrl+"/")
 	w.WriteHeader(http.StatusFound)
 }
 
@@ -425,7 +425,7 @@ func (fe *frontendServer) logoutHandler(w http.ResponseWriter, r *http.Request) 
 		c.MaxAge = -1
 		http.SetCookie(w, c)
 	}
-	w.Header().Set("Location", baseUrl + "/")
+	w.Header().Set("Location", baseUrl+"/")
 	w.WriteHeader(http.StatusFound)
 }
 
@@ -654,7 +654,7 @@ type OrderRecord struct {
 // OrderItem represents a parsed order item (matches the actual database structure)
 type OrderItem struct {
 	Item OrderItemDetails `json:"item"`
-	Cost Money           `json:"cost"`
+	Cost Money            `json:"cost"`
 }
 
 type OrderItemDetails struct {
@@ -695,11 +695,11 @@ func (fe *frontendServer) orderHistoryHandler(w http.ResponseWriter, r *http.Req
 	}
 	defer db.Close()
 
-	// Get orders for current user
+	// Get orders for current user (limit to 20 most recent orders)
 	userID := sessionID(r)
 	query := `SELECT id, user_id, email, total_cost, currency, items, shipping_address, created_at 
-			  FROM orders WHERE user_id = $1 ORDER BY created_at DESC`
-	
+			  FROM orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20`
+
 	rows, err := db.Query(query, userID)
 	if err != nil {
 		renderHTTPError(log, r, w, errors.Wrap(err, "could not query orders"), http.StatusInternalServerError)
@@ -750,11 +750,16 @@ func (fe *frontendServer) orderHistoryHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// Check if there might be more orders
+	hasMoreOrders := len(orders) == 20
+
 	if err := templates.ExecuteTemplate(w, "orders", injectCommonTemplateData(r, map[string]interface{}{
-		"show_currency": true,
-		"currencies":    currencies,
-		"orders":        orders,
-		"cart_size":     0, // Not needed for order history page
+		"show_currency":   true,
+		"currencies":      currencies,
+		"orders":          orders,
+		"cart_size":       0, // Not needed for order history page
+		"has_more_orders": hasMoreOrders,
+		"orders_count":    len(orders),
 	})); err != nil {
 		log.Println(err)
 	}
